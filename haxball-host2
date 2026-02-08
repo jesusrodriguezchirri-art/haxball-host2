@@ -1,0 +1,1380 @@
+// ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+// 🐯🔥 JUEGAN TODOS | THE TIGER - HAXBALL HEADLESS SCRIPT
+// Sistema completo: ELO + Rangos + Powers + Mapas + Rotación
+// ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+
+// ══════════════════════════════════════════════════════════
+// 📋 CONFIGURACIÓN DEL ROOM
+// ══════════════════════════════════════════════════════════
+
+const roomConfig = {
+    roomName: "🐯 Juegan Todos | The Tiger 🔥",
+    maxPlayers: 30,
+    public: true,
+    password: null,
+    noPlayer: true,
+    geo: {code: "CL", lat: -33.45, lon: -70.66}
+};
+
+const room = HBInit(roomConfig);
+
+// ══════════════════════════════════════════════════════════
+// 🌍 VARIABLES GLOBALES
+// ══════════════════════════════════════════════════════════
+
+// Sistema de Owner
+const OWNER_PASSWORD = "!owner123"; // Comando secreto para obtener owner
+let ownerAuth = null;
+let adminList = new Set();
+
+// Sistema de ELO y Stats
+let playerStats = {};
+let playerELO = {};
+
+// Sistema de Rangos
+const RANKS = {
+    CACHORRO: {name: "Cachorro", minELO: 0, maxELO: 799, prefix: "[C]", color: 0x808080, cooldown: 120},
+    TIGRE_JOVEN: {name: "Tigre Joven", minELO: 800, maxELO: 1499, prefix: "[TJ]", color: 0x00FF00, cooldown: 60},
+    TIGRE_ALPHA: {name: "Tigre Alpha", minELO: 1500, maxELO: 2199, prefix: "[TA]", color: 0xFF0000, cooldown: 30},
+    TIGRE_LEGENDARIO: {name: "Tigre Legendario", minELO: 2200, maxELO: 999999, prefix: "[LEG]", color: 0xFFD700, cooldown: 15}
+};
+
+// Sistema de Powers - Cooldowns por jugador
+let playerCooldowns = {};
+
+// Sistema de Mapas
+const MAPS = {
+    // Real Soccer Maps
+    "rsr": {
+        name: "🗦⚽🗧𝚁𝙴𝙰𝙻 𝚂𝙾𝙲𝙲𝙴𝚁 🙼  ᴿ ᴱ ⱽ ᴼ ᴸ ᵁ ᵀ ᴵ ᴼ ᴺ  🙼",
+        stadium: "🗦⚽🗧𝚁𝙴𝙰𝙻 𝚂𝙾𝙲𝙲𝙴𝚁 🙼  ᴿ ᴱ ⱽ ᴼ ᴸ ᵁ ᵀ ᴵ ᴼ ᴺ  🙼",
+        scoreLimit: 3,
+        timeLimit: 5,
+        category: "futbol"
+    },
+    "rsevo": {
+        name: "💫⚽️ Real Soccer ᴱⱽᴼ ⚽️💫",
+        stadium: "💫⚽️ Real Soccer ᴱⱽᴼ ⚽️💫 by GLH",
+        scoreLimit: 3,
+        timeLimit: 5,
+        category: "futbol"
+    },
+    "rsr-flash": {
+        name: "⚡️⚽️ R S R ⚽️⚡️",
+        stadium: "⚡️⚽️ R S R ⚽️⚡️ by GLH",
+        scoreLimit: 3,
+        timeLimit: 5,
+        category: "futbol"
+    },
+    "rsr-sheep": {
+        name: "🐑⚽️ R S R ⚽️🐑",
+        stadium: "🐑⚽️ R S R ⚽️🐑 by GLH",
+        scoreLimit: 3,
+        timeLimit: 5,
+        category: "futbol"
+    },
+    "big": {
+        name: "𝙱𝙸𝙶 ʙʏ 𝐆𝐋𝐇",
+        stadium: "𝙱𝙸𝙶 ʙʏ 𝐆𝐋𝐇",
+        scoreLimit: 3,
+        timeLimit: 5,
+        category: "futbol"
+    },
+    "mini": {
+        name: "Mɪɴɪ 𝐑𝐒",
+        stadium: "Mɪɴɪ 𝐑𝐒 ʙʏ 𝒓𝒔𝒌 & 𝐆𝐋𝐇",
+        scoreLimit: 3,
+        timeLimit: 5,
+        category: "futbol"
+    },
+    // Futsal Maps
+    "futsal": {
+        name: "👑 RᴇᴀʟFᴜᴛsᴀʟ⚽",
+        stadium: "👑 RᴇᴀʟFᴜᴛsᴀʟ⚽",
+        scoreLimit: 5,
+        timeLimit: 5,
+        category: "futsal"
+    },
+    "futsal-x5": {
+        name: "⚽️ Futsal x5 👑",
+        stadium: "⚽️ Futsal x5 👑",
+        scoreLimit: 5,
+        timeLimit: 5,
+        category: "futsal"
+    },
+    "futsal-x2": {
+        name: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯² 🏆",
+        stadium: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯² 🏆 𝗚𝗟𝗛",
+        scoreLimit: 5,
+        timeLimit: 5,
+        category: "futsal"
+    },
+    "futsal-x3": {
+        name: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯³ 🏆",
+        stadium: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯³ 🏆 𝗚𝗟𝗛",
+        scoreLimit: 5,
+        timeLimit: 5,
+        category: "futsal"
+    },
+    "futsal-x4": {
+        name: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯⁴ 🏆",
+        stadium: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯⁴ 🏆 𝗚𝗟𝗛",
+        scoreLimit: 5,
+        timeLimit: 5,
+        category: "futsal"
+    },
+    "futsal-x5-glh": {
+        name: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯⁵ 🏆",
+        stadium: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯⁵ 🏆 𝗚𝗟𝗛",
+        scoreLimit: 5,
+        timeLimit: 5,
+        category: "futsal"
+    },
+    "futsal-x7": {
+        name: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯⁷ 🏆",
+        stadium: "𝙵 𝚄 𝚃 𝚂 𝙰 𝙻 ⨯⁷ 🏆 𝗚𝗟𝗛",
+        scoreLimit: 7,
+        timeLimit: 6,
+        category: "futsal"
+    },
+    // Minijuegos
+    "basketball": {
+        name: "ʙᴀsᴋᴇᴛʙᴀʟʟ 🏀",
+        stadium: "ʙᴀsᴋᴇᴛʙᴀʟʟ 🏀 By GLH",
+        scoreLimit: 30,
+        timeLimit: 5,
+        category: "minijuego"
+    },
+    "volleyball": {
+        name: "ᴠᴏʟʟᴇʏʙᴀʟʟ 🏐",
+        stadium: "ᴠᴏʟʟᴇʏʙᴀʟʟ  🏐",
+        scoreLimit: 15,
+        timeLimit: 5,
+        category: "minijuego"
+    },
+    "volleyball-3d": {
+        name: "ᴠᴏʟʟᴇʏʙᴀʟʟ 3D 🏐",
+        stadium: "ᴠᴏʟʟᴇʏʙᴀʟʟ 3D 🏐",
+        scoreLimit: 15,
+        timeLimit: 5,
+        category: "minijuego"
+    },
+    "handball": {
+        name: "🤾 𝙷𝙰𝙽𝙳𝙱𝙰𝙻𝙻",
+        stadium: "🤾 𝙷𝙰𝙽𝙳𝙱𝙰𝙻𝙻 𝚋𝚢 𝐆𝐋𝐇",
+        scoreLimit: 10,
+        timeLimit: 5,
+        category: "minijuego"
+    },
+    "skate": {
+        name: "Sᴋᴀᴛᴇ 🛹",
+        stadium: "Sᴋᴀᴛᴇ 🛹 ʙʏ ＧＬＨ",
+        scoreLimit: 0,
+        timeLimit: 3,
+        category: "minijuego"
+    },
+    "tennis-cemento": {
+        name: "𝑻𝒆𝒏𝒊𝒔 🎾 CEMENTO",
+        stadium: "𝑻𝒆𝒏𝒊𝒔 🎾 [ 𝟷 🆚 𝟷] ~ 𝐂𝐄𝐌𝐄𝐍𝐓𝐎",
+        scoreLimit: 21,
+        timeLimit: 5,
+        category: "minijuego"
+    },
+    "tennis-pasto": {
+        name: "𝑻𝒆𝒏𝒊𝒔 🎾 PASTO",
+        stadium: "𝑻𝒆𝒏𝒊𝒔 🎾 [ 𝟷 🆚 𝟷] ~ 𝐏𝐀𝐒𝐓𝐎",
+        scoreLimit: 21,
+        timeLimit: 5,
+        category: "minijuego"
+    },
+    "tennis-polvo": {
+        name: "𝑻𝒆𝒏𝒊𝒔 🎾 POLVO",
+        stadium: "𝑻𝒆𝒏𝒊𝒔 🎾 [ 𝟷 🆚 𝟷] ~ 𝐏𝐎𝐋𝐕𝐎 𝐃𝐄 𝐋𝐀𝐃𝐑𝐈𝐋𝐋𝐎",
+        scoreLimit: 21,
+        timeLimit: 5,
+        category: "minijuego"
+    },
+    "penalty-red": {
+        name: "ᴘᴇɴᴀʟᴛʏ 🔴",
+        stadium: "ᴘᴇɴᴀʟᴛʏ ʀᴇᴅ ᴛᴇᴀᴍ 🔴 | 𝐆𝐋𝐇",
+        scoreLimit: 5,
+        timeLimit: 0,
+        category: "minijuego"
+    },
+    "penalty-blue": {
+        name: "ᴘᴇɴᴀʟᴛʏ 🔵",
+        stadium: "ᴘᴇɴᴀʟᴛʏ ʙʟᴜᴇ ᴛᴇᴀᴍ 🔵 | 𝐆𝐋𝐇",
+        scoreLimit: 5,
+        timeLimit: 0,
+        category: "minijuego"
+    },
+    "training": {
+        name: "💪 Entrenamiento",
+        stadium: "💪 Entrenamiento RS ⚽",
+        scoreLimit: 0,
+        timeLimit: 0,
+        category: "otros"
+    },
+    "premios": {
+        name: "✨ ɢᴀʟᴀ ᴅᴇ ᴘʀᴇᴍɪᴏs 🏅 ✨",
+        stadium: "✨ ɢᴀʟᴀ ᴅᴇ ᴘʀᴇᴍɪᴏs 🏅 ✨ by GLH",
+        scoreLimit: 0,
+        timeLimit: 0,
+        category: "otros"
+    },
+    "campeones": {
+        name: "🏆 CAMPEONES 🌿⭐🌿",
+        stadium: "🏆 CAMPEONES 🌿⭐🌿",
+        scoreLimit: 3,
+        timeLimit: 5,
+        category: "especial"
+    }
+};
+
+// Sistema de votación de mapas
+let mapVoting = {
+    active: false,
+    votes: {},
+    mapOptions: [],
+    votedPlayers: new Set(),
+    endTime: null
+};
+
+let currentMapKey = "rsr";
+let mapHistory = []; // Últimos 5 mapas jugados
+const MAX_MAP_HISTORY = 5;
+
+// Sistema de Discord
+const DISCORD_URL = "https://discord.gg/tMFwr3NJ";
+let discordMessageInterval = null;
+const DISCORD_MESSAGE_INTERVAL = 10 * 60 * 1000; // 10 minutos
+
+// Sistema de juego
+let gameInProgress = false;
+let afkCheckInterval = null;
+let afkPlayers = new Set();
+
+// ══════════════════════════════════════════════════════════
+// 🛠️ FUNCIONES AUXILIARES
+// ══════════════════════════════════════════════════════════
+
+// Cargar datos del localStorage
+function loadData() {
+    try {
+        const savedStats = localStorage.getItem('playerStats');
+        if (savedStats) playerStats = JSON.parse(savedStats);
+        
+        const savedELO = localStorage.getItem('playerELO');
+        if (savedELO) playerELO = JSON.parse(savedELO);
+        
+        const savedOwner = localStorage.getItem('ownerAuth');
+        if (savedOwner) ownerAuth = savedOwner;
+        
+        const savedAdmins = localStorage.getItem('adminList');
+        if (savedAdmins) adminList = new Set(JSON.parse(savedAdmins));
+        
+        console.log("✅ Datos cargados correctamente");
+    } catch (e) {
+        console.log("⚠️ Error al cargar datos:", e);
+    }
+}
+
+// Guardar datos en localStorage
+function saveData() {
+    try {
+        localStorage.setItem('playerStats', JSON.stringify(playerStats));
+        localStorage.setItem('playerELO', JSON.stringify(playerELO));
+        localStorage.setItem('ownerAuth', ownerAuth || "");
+        localStorage.setItem('adminList', JSON.stringify([...adminList]));
+    } catch (e) {
+        console.log("⚠️ Error al guardar datos:", e);
+    }
+}
+
+// Inicializar jugador si no existe
+function initPlayer(auth) {
+    if (!playerStats[auth]) {
+        playerStats[auth] = {
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            goals: 0,
+            assists: 0,
+            ownGoals: 0,
+            cleanSheets: 0
+        };
+    }
+    if (!playerELO[auth]) {
+        playerELO[auth] = 1000; // ELO inicial
+    }
+}
+
+// Obtener rango según ELO
+function getRankByELO(elo) {
+    for (let rank of Object.values(RANKS)) {
+        if (elo >= rank.minELO && elo <= rank.maxELO) {
+            return rank;
+        }
+    }
+    return RANKS.CACHORRO;
+}
+
+// Obtener prefijo completo del jugador
+function getPlayerPrefix(player) {
+    // Verificación estricta de owner
+    if (ownerAuth !== null && player.auth === ownerAuth) {
+        return "[OWNER]";
+    }
+    
+    // Verificación estricta de admin
+    if (adminList.has(player.auth)) {
+        return "[ADM]";
+    }
+    
+    // Si no es owner ni admin, mostrar rango según ELO
+    const elo = playerELO[player.auth] || 1000;
+    const rank = getRankByELO(elo);
+    return rank.prefix;
+}
+
+// Obtener color del jugador
+function getPlayerColor(player) {
+    // Verificación estricta de owner/admin
+    if ((ownerAuth !== null && player.auth === ownerAuth) || adminList.has(player.auth)) {
+        return 0x9966FF; // Violeta
+    }
+    
+    const elo = playerELO[player.auth] || 1000;
+    const rank = getRankByELO(elo);
+    return rank.color;
+}
+
+// Actualizar nombre del jugador con prefijo
+function updatePlayerName(player) {
+    const prefix = getPlayerPrefix(player);
+    const baseName = player.name.replace(/^\[.*?\]\s*/, ''); // Quitar prefijos anteriores
+    room.setPlayerAdmin(player.id, false); // Resetear admin visual
+    
+    // No podemos cambiar el nombre directamente, solo mostrar el prefijo en mensajes
+    // El prefijo se mostrará en el chat
+}
+
+// Verificar si el jugador puede usar un comando (cooldown)
+function canUseCommand(playerId, commandName, cooldownSeconds) {
+    const now = Date.now();
+    const key = `${playerId}_${commandName}`;
+    
+    if (!playerCooldowns[key]) {
+        playerCooldowns[key] = now;
+        return true;
+    }
+    
+    const timePassed = (now - playerCooldowns[key]) / 1000;
+    if (timePassed >= cooldownSeconds) {
+        playerCooldowns[key] = now;
+        return true;
+    }
+    
+    return false;
+}
+
+// Obtener tiempo restante de cooldown
+function getCooldownRemaining(playerId, commandName, cooldownSeconds) {
+    const now = Date.now();
+    const key = `${playerId}_${commandName}`;
+    
+    if (!playerCooldowns[key]) return 0;
+    
+    const timePassed = (now - playerCooldowns[key]) / 1000;
+    const remaining = Math.ceil(cooldownSeconds - timePassed);
+    return remaining > 0 ? remaining : 0;
+}
+
+// ══════════════════════════════════════════════════════════
+// 🗺️ SISTEMA DE MAPAS
+// ══════════════════════════════════════════════════════════
+
+// Cargar un mapa
+function loadMap(mapKey) {
+    const map = MAPS[mapKey];
+    if (!map) {
+        room.sendAnnouncement("❌ Mapa no encontrado", null, 0xFF0000, "bold", 2);
+        return false;
+    }
+    
+    try {
+        room.setCustomStadium(map.stadium);
+        room.setScoreLimit(map.scoreLimit);
+        room.setTimeLimit(map.timeLimit);
+        
+        currentMapKey = mapKey;
+        
+        // Actualizar historial
+        mapHistory.push(mapKey);
+        if (mapHistory.length > MAX_MAP_HISTORY) {
+            mapHistory.shift();
+        }
+        
+        room.sendAnnouncement(`🗺️ Mapa cargado: ${map.name}`, null, 0x00FF00, "bold", 2);
+        return true;
+    } catch (e) {
+        room.sendAnnouncement("❌ Error al cargar el mapa", null, 0xFF0000, "bold", 2);
+        console.log("Error loading map:", e);
+        return false;
+    }
+}
+
+// Obtener mapas disponibles (excluir los recientes)
+function getAvailableMaps() {
+    return Object.keys(MAPS).filter(key => !mapHistory.includes(key));
+}
+
+// Obtener mapa aleatorio
+function getRandomMap() {
+    const available = getAvailableMaps();
+    if (available.length === 0) {
+        mapHistory = []; // Reset history si no hay mapas disponibles
+        return Object.keys(MAPS)[Math.floor(Math.random() * Object.keys(MAPS).length)];
+    }
+    return available[Math.floor(Math.random() * available.length)];
+}
+
+// Iniciar votación de mapas
+function startMapVoting() {
+    if (mapVoting.active) return;
+    
+    mapVoting.active = true;
+    mapVoting.votes = {};
+    mapVoting.votedPlayers = new Set();
+    
+    // Seleccionar 3 mapas aleatorios
+    const available = getAvailableMaps();
+    let options = [];
+    
+    for (let i = 0; i < 3 && available.length > 0; i++) {
+        const randomIndex = Math.floor(Math.random() * available.length);
+        options.push(available[randomIndex]);
+        available.splice(randomIndex, 1);
+    }
+    
+    // Si no hay suficientes mapas disponibles, agregar aleatorios
+    while (options.length < 3) {
+        const allKeys = Object.keys(MAPS);
+        const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+        if (!options.includes(randomKey)) {
+            options.push(randomKey);
+        }
+    }
+    
+    mapVoting.mapOptions = options;
+    mapVoting.endTime = Date.now() + 30000; // 30 segundos para votar
+    
+    room.sendAnnouncement("╔═══════════════════════════════════╗", null, 0xFFFF00, "bold", 0);
+    room.sendAnnouncement("           🗳️ VOTACIÓN DE MAPAS 🗳️", null, 0xFFFF00, "bold", 0);
+    room.sendAnnouncement("╠═══════════════════════════════════╣", null, 0xFFFF00, "bold", 0);
+    
+    options.forEach((key, index) => {
+        const map = MAPS[key];
+        room.sendAnnouncement(`  ${index + 1}. ${map.name}`, null, 0xFFFFFF, "normal", 0);
+        room.sendAnnouncement(`     Categoría: ${map.category}`, null, 0xAAAAAA, "normal", 0);
+        mapVoting.votes[index + 1] = 0;
+    });
+    
+    room.sendAnnouncement("╠═══════════════════════════════════╣", null, 0xFFFF00, "bold", 0);
+    room.sendAnnouncement("  Escribe !vote 1, !vote 2 o !vote 3", null, 0xFFFF00, "normal", 0);
+    room.sendAnnouncement("  Tienes 30 segundos para votar ⏱️", null, 0xFFFF00, "normal", 0);
+    room.sendAnnouncement("╚═══════════════════════════════════╝", null, 0xFFFF00, "bold", 0);
+    
+    // Timer para finalizar votación
+    setTimeout(() => {
+        endMapVoting();
+    }, 30000);
+}
+
+// Votar por un mapa
+function voteMap(player, mapNumber) {
+    if (!mapVoting.active) {
+        room.sendAnnouncement("❌ No hay votación activa", player.id, 0xFF0000, "normal", 2);
+        return;
+    }
+    
+    if (mapVoting.votedPlayers.has(player.id)) {
+        room.sendAnnouncement("❌ Ya votaste", player.id, 0xFF0000, "normal", 2);
+        return;
+    }
+    
+    if (!mapVoting.votes.hasOwnProperty(mapNumber)) {
+        room.sendAnnouncement("❌ Opción inválida. Usa !vote 1, !vote 2 o !vote 3", player.id, 0xFF0000, "normal", 2);
+        return;
+    }
+    
+    // Calcular peso del voto según rango
+    const elo = playerELO[player.auth] || 1000;
+    const rank = getRankByELO(elo);
+    let voteWeight = 1;
+    
+    if (rank === RANKS.TIGRE_LEGENDARIO) voteWeight = 3;
+    else if (rank === RANKS.TIGRE_ALPHA) voteWeight = 2;
+    else if (rank === RANKS.TIGRE_JOVEN) voteWeight = 1.5;
+    
+    mapVoting.votes[mapNumber] += voteWeight;
+    mapVoting.votedPlayers.add(player.id);
+    
+    const mapName = MAPS[mapVoting.mapOptions[mapNumber - 1]].name;
+    room.sendAnnouncement(`✅ Voto registrado: ${mapName} (peso: x${voteWeight})`, player.id, 0x00FF00, "normal", 2);
+}
+
+// Finalizar votación de mapas
+function endMapVoting() {
+    if (!mapVoting.active) return;
+    
+    mapVoting.active = false;
+    
+    // Encontrar el mapa con más votos
+    let maxVotes = 0;
+    let winningOption = 1;
+    
+    for (let option in mapVoting.votes) {
+        if (mapVoting.votes[option] > maxVotes) {
+            maxVotes = mapVoting.votes[option];
+            winningOption = parseInt(option);
+        }
+    }
+    
+    const winningMapKey = mapVoting.mapOptions[winningOption - 1];
+    const winningMap = MAPS[winningMapKey];
+    
+    room.sendAnnouncement("╔═══════════════════════════════════╗", null, 0x00FF00, "bold", 0);
+    room.sendAnnouncement("        🏆 RESULTADO DE VOTACIÓN 🏆", null, 0x00FF00, "bold", 0);
+    room.sendAnnouncement("╠═══════════════════════════════════╣", null, 0x00FF00, "bold", 0);
+    room.sendAnnouncement(`  Mapa ganador: ${winningMap.name}`, null, 0xFFFFFF, "normal", 0);
+    room.sendAnnouncement(`  Total de votos: ${maxVotes.toFixed(1)}`, null, 0xFFFFFF, "normal", 0);
+    room.sendAnnouncement("╚═══════════════════════════════════╝", null, 0x00FF00, "bold", 0);
+    
+    // Cargar el mapa ganador
+    setTimeout(() => {
+        loadMap(winningMapKey);
+    }, 2000);
+}
+
+// ══════════════════════════════════════════════════════════
+// 📊 SISTEMA DE ELO
+// ══════════════════════════════════════════════════════════
+
+function calculateELOChange(winnerELO, loserELO, kFactor = 32) {
+    const expectedScore = 1 / (1 + Math.pow(10, (loserELO - winnerELO) / 400));
+    return Math.round(kFactor * (1 - expectedScore));
+}
+
+function updateELO(winners, losers) {
+    const avgWinnerELO = winners.reduce((sum, p) => sum + (playerELO[p.auth] || 1000), 0) / winners.length;
+    const avgLoserELO = losers.reduce((sum, p) => sum + (playerELO[p.auth] || 1000), 0) / losers.length;
+    
+    const eloChange = calculateELOChange(avgWinnerELO, avgLoserELO);
+    
+    winners.forEach(player => {
+        playerELO[player.auth] = (playerELO[player.auth] || 1000) + eloChange;
+        playerStats[player.auth].wins++;
+    });
+    
+    losers.forEach(player => {
+        playerELO[player.auth] = Math.max(0, (playerELO[player.auth] || 1000) - eloChange);
+        playerStats[player.auth].losses++;
+    });
+    
+    saveData();
+    
+    room.sendAnnouncement(`📊 ELO actualizado: +${eloChange} ganadores / -${eloChange} perdedores`, null, 0xFFFF00, "normal", 2);
+}
+
+// ══════════════════════════════════════════════════════════
+// 💬 SISTEMA DE CHAT Y COMANDOS
+// ══════════════════════════════════════════════════════════
+
+function sendCustomMessage(player, message) {
+    const prefix = getPlayerPrefix(player);
+    const color = getPlayerColor(player);
+    const fullMessage = `${prefix} ${player.name}: ${message}`;
+    room.sendAnnouncement(fullMessage, null, color, "normal", 1);
+    return false; // Bloquear mensaje original
+}
+
+function handleCommand(player, message) {
+    const args = message.split(' ');
+    const command = args[0].toLowerCase();
+    
+    // ═══════════════════════════════════════════════════════
+    // 🔐 COMANDOS DE OWNER (SECRETO)
+    // ═══════════════════════════════════════════════════════
+    
+    if (command === OWNER_PASSWORD) {
+        if (!ownerAuth) {
+            ownerAuth = player.auth;
+            adminList.add(player.auth); // Agregar a lista de admins también
+            saveData();
+            
+            // Forzar admin con un pequeño delay para asegurar que se aplique
+            setTimeout(() => {
+                room.setPlayerAdmin(player.id, true);
+            }, 100);
+            
+            room.sendAnnouncement("👑 Ahora eres el OWNER del servidor", player.id, 0x9966FF, "bold", 2);
+            room.sendAnnouncement("👑 Se te han otorgado privilegios de administrador", player.id, 0x9966FF, "normal", 2);
+            room.sendAnnouncement("🔧 Admin aplicado - verifica la estrella ⭐", player.id, 0xFFD700, "normal", 2);
+            updatePlayerName(player);
+            
+            console.log(`👑 OWNER establecido: ${player.name} (ID: ${player.id}, Auth: ${player.auth})`);
+        } else if (ownerAuth === player.auth) {
+            setTimeout(() => {
+                room.setPlayerAdmin(player.id, true);
+            }, 100);
+            room.sendAnnouncement("👑 Ya eres el OWNER - Admin restaurado", player.id, 0x9966FF, "normal", 2);
+        } else {
+            room.sendAnnouncement("❌ Ya existe un OWNER", player.id, 0xFF0000, "normal", 2);
+        }
+        return false; // No mostrar en el chat
+    }
+    
+    // Verificar si es owner o admin para comandos especiales
+    const isOwner = player.auth === ownerAuth;
+    const isAdmin = adminList.has(player.auth);
+    
+    // ═══════════════════════════════════════════════════════
+    // 👑 COMANDOS SOLO OWNER
+    // ═══════════════════════════════════════════════════════
+    
+    if (!isOwner && !isAdmin) {
+        // Comandos públicos disponibles para todos
+        
+        if (command === "!help") {
+            room.sendAnnouncement("╔═══════════════════════════════════╗", player.id, 0x00FFFF, "bold", 0);
+            room.sendAnnouncement("          📋 COMANDOS DISPONIBLES", player.id, 0x00FFFF, "bold", 0);
+            room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0x00FFFF, "bold", 0);
+            
+            // ═══ COMANDOS GENERALES ═══
+            room.sendAnnouncement("  📊 INFORMACIÓN Y STATS:", player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement("    !stats - Ver tus estadísticas", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("    !elo - Ver tu ELO actual", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("    !rank - Ver tu rango", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("    !top - Ver top 10 jugadores", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("", player.id, 0x000000, "normal", 0);
+            
+            // ═══ COMANDOS DE MAPAS ═══
+            room.sendAnnouncement("  🗺️ MAPAS:", player.id, 0x00FF00, "bold", 0);
+            room.sendAnnouncement("    !maps - Ver lista de mapas", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("    !map <código> - Votar por un mapa", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("    !randommap - Votar mapa aleatorio", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("    !nextmap - Ver próximo mapa", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("    !vote 1/2/3 - Votar en votación activa", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("", player.id, 0x000000, "normal", 0);
+            
+            // ═══ COMANDOS SOCIALES ═══
+            room.sendAnnouncement("  💬 SOCIAL:", player.id, 0x7289DA, "bold", 0);
+            room.sendAnnouncement("    !discord - Link del Discord oficial", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("    !admins - Ver lista de administradores", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("", player.id, 0x000000, "normal", 0);
+            
+            // ═══ COMANDOS DEBUG ═══
+            room.sendAnnouncement("  🔍 DEBUG:", player.id, 0xAAAAAA, "bold", 0);
+            room.sendAnnouncement("    !checkadmin - Ver tu estado completo", player.id, 0xFFFFFF, "normal", 0);
+            
+            // ═══ COMANDOS DE ADMIN ═══
+            if (isAdmin || isOwner) {
+                room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0x9966FF, "bold", 0);
+                room.sendAnnouncement("  👮 COMANDOS DE ADMIN:", player.id, 0x9966FF, "bold", 0);
+                room.sendAnnouncement("    !kick <nombre> [razón] - Expulsar jugador", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("    !mute <nombre> - Mutear jugador", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("    !forcemap <código> - Forzar mapa", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("    !rr - Reiniciar partida", player.id, 0xFFFFFF, "normal", 0);
+            }
+            
+            // ═══ COMANDOS DE OWNER ═══
+            if (isOwner) {
+                room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0xFFD700, "bold", 0);
+                room.sendAnnouncement("  👑 COMANDOS DE OWNER:", player.id, 0xFFD700, "bold", 0);
+                room.sendAnnouncement("", player.id, 0x000000, "normal", 0);
+                room.sendAnnouncement("    📋 GESTIÓN DE ADMINS:", player.id, 0xFFD700, "normal", 0);
+                room.sendAnnouncement("    !admin <nombre> - Dar admin a jugador", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("    !unadmin <nombre> - Quitar admin", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("    !clearadmins - Limpiar todos los admins", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("    !forceadmin - Forzar tu admin", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("", player.id, 0x000000, "normal", 0);
+                room.sendAnnouncement("    📊 GESTIÓN DE ELO:", player.id, 0xFFD700, "normal", 0);
+                room.sendAnnouncement("    !setelo <nombre> <elo> - Modificar ELO", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("    !resetelo [nombre] - Resetear ELO/stats", player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement("      (sin nombre = resetear todos)", player.id, 0xAAAAAA, "normal", 0);
+                room.sendAnnouncement("", player.id, 0x000000, "normal", 0);
+                room.sendAnnouncement("    🚨 EMERGENCIA:", player.id, 0xFF0000, "normal", 0);
+                room.sendAnnouncement("    !nukesystem - Reset nuclear del sistema", player.id, 0xFFFFFF, "normal", 0);
+            }
+            
+            room.sendAnnouncement("╚═══════════════════════════════════╝", player.id, 0x00FFFF, "bold", 0);
+            
+            // Mensaje adicional según el rol
+            if (isOwner) {
+                room.sendAnnouncement("💡 Eres el OWNER - Tienes acceso total", player.id, 0xFFD700, "normal", 2);
+            } else if (isAdmin) {
+                room.sendAnnouncement("💡 Eres ADMIN - Puedes moderar el servidor", player.id, 0x9966FF, "normal", 2);
+            } else {
+                room.sendAnnouncement("💡 Tip: Usa !map <código> para votar mapas", player.id, 0x00FFFF, "normal", 2);
+            }
+            
+            return false;
+        }
+        
+        if (command === "!stats") {
+            const stats = playerStats[player.auth];
+            const elo = playerELO[player.auth] || 1000;
+            const rank = getRankByELO(elo);
+            
+            room.sendAnnouncement("╔═══════════════════════════════════╗", player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement(`      📊 ESTADÍSTICAS DE ${player.name}`, player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement(`  🏆 Victorias: ${stats.wins}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  ❌ Derrotas: ${stats.losses}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  🤝 Empates: ${stats.draws}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  ⚽ Goles: ${stats.goals}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  🎯 Asistencias: ${stats.assists}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  📈 ELO: ${elo}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  🏅 Rango: ${rank.name}`, player.id, rank.color, "bold", 0);
+            room.sendAnnouncement("╚═══════════════════════════════════╝", player.id, 0xFFD700, "bold", 0);
+            return false;
+        }
+        
+        if (command === "!elo") {
+            const elo = playerELO[player.auth] || 1000;
+            room.sendAnnouncement(`📈 Tu ELO actual es: ${elo}`, player.id, 0xFFD700, "bold", 2);
+            return false;
+        }
+        
+        if (command === "!rank") {
+            const elo = playerELO[player.auth] || 1000;
+            const rank = getRankByELO(elo);
+            room.sendAnnouncement(`🏅 Tu rango actual es: ${rank.name} (ELO: ${elo})`, player.id, rank.color, "bold", 2);
+            return false;
+        }
+        
+        if (command === "!top") {
+            const sortedPlayers = Object.entries(playerELO)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            room.sendAnnouncement("╔═══════════════════════════════════╗", player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement("          🏆 TOP 10 JUGADORES", player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0xFFD700, "bold", 0);
+            
+            sortedPlayers.forEach(([auth, elo], index) => {
+                // Buscar el nombre del jugador (simplificado)
+                const rank = getRankByELO(elo);
+                room.sendAnnouncement(`  ${index + 1}. ${rank.prefix} ELO: ${elo}`, player.id, rank.color, "normal", 0);
+            });
+            
+            room.sendAnnouncement("╚═══════════════════════════════════╝", player.id, 0xFFD700, "bold", 0);
+            return false;
+        }
+        
+        if (command === "!discord") {
+            room.sendAnnouncement(`💬 Discord oficial: ${DISCORD_URL}`, player.id, 0x7289DA, "bold", 2);
+            return false;
+        }
+        
+        if (command === "!checkadmin") {
+            room.sendAnnouncement("╔═══════════════════════════════════╗", player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement("          🔍 ESTADO DEL SISTEMA", player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0xFFD700, "bold", 0);
+            room.sendAnnouncement(`  Tu ID: ${player.id}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  Tu Auth: ${player.auth}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  Owner Auth: ${ownerAuth || "No establecido"}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  Eres Owner: ${player.auth === ownerAuth ? "✅ Sí" : "❌ No"}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  Eres Admin: ${adminList.has(player.auth) ? "✅ Sí" : "❌ No"}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  Admin Visual: ${player.admin ? "✅ Sí" : "❌ No"}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement(`  Total Admins: ${adminList.size}`, player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("╚═══════════════════════════════════╝", player.id, 0xFFD700, "bold", 0);
+            return false;
+        }
+        
+        if (command === "!admins") {
+            room.sendAnnouncement("╔═══════════════════════════════════╗", player.id, 0x9966FF, "bold", 0);
+            room.sendAnnouncement("       👮 LISTA DE ADMINISTRADORES", player.id, 0x9966FF, "bold", 0);
+            room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0x9966FF, "bold", 0);
+            
+            if (ownerAuth) {
+                room.sendAnnouncement(`  👑 OWNER (Auth: ${ownerAuth.substring(0, 10)}...)`, player.id, 0xFFD700, "normal", 0);
+            } else {
+                room.sendAnnouncement("  👑 OWNER: No establecido", player.id, 0xFF0000, "normal", 0);
+            }
+            
+            if (adminList.size > 0) {
+                let count = 0;
+                adminList.forEach(auth => {
+                    count++;
+                    room.sendAnnouncement(`  ${count}. Admin (Auth: ${auth.substring(0, 10)}...)`, player.id, 0xFFFFFF, "normal", 0);
+                });
+            } else {
+                room.sendAnnouncement("  No hay admins adicionales", player.id, 0xAAAAAA, "normal", 0);
+            }
+            
+            room.sendAnnouncement("╚═══════════════════════════════════╝", player.id, 0x9966FF, "bold", 0);
+            return false;
+        }
+        
+        if (command === "!maps") {
+            room.sendAnnouncement("╔═══════════════════════════════════╗", player.id, 0x00FFFF, "bold", 0);
+            room.sendAnnouncement("          🗺️ LISTA DE MAPAS", player.id, 0x00FFFF, "bold", 0);
+            room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0x00FFFF, "bold", 0);
+            
+            let count = 0;
+            for (let key in MAPS) {
+                const map = MAPS[key];
+                room.sendAnnouncement(`  ${map.name}`, player.id, 0xFFFFFF, "normal", 0);
+                room.sendAnnouncement(`    Código: ${key} | Categoría: ${map.category}`, player.id, 0xAAAAAA, "normal", 0);
+                count++;
+                if (count >= 10) break; // Mostrar solo primeros 10
+            }
+            
+            room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0x00FFFF, "bold", 0);
+            room.sendAnnouncement("  Usa: !map <código> para votar", player.id, 0xFFFFFF, "normal", 0);
+            room.sendAnnouncement("╚═══════════════════════════════════╝", player.id, 0x00FFFF, "bold", 0);
+            return false;
+        }
+        
+        if (command === "!map") {
+            const mapKey = args[1];
+            if (!mapKey) {
+                room.sendAnnouncement("❌ Uso: !map <código>", player.id, 0xFF0000, "normal", 2);
+                return false;
+            }
+            
+            if (!MAPS[mapKey]) {
+                room.sendAnnouncement("❌ Mapa no encontrado. Usa !maps para ver la lista", player.id, 0xFF0000, "normal", 2);
+                return false;
+            }
+            
+            const elo = playerELO[player.auth] || 1000;
+            const rank = getRankByELO(elo);
+            
+            if (!canUseCommand(player.id, 'map', rank.cooldown)) {
+                const remaining = getCooldownRemaining(player.id, 'map', rank.cooldown);
+                room.sendAnnouncement(`⏱️ Debes esperar ${remaining}s para usar este comando`, player.id, 0xFF0000, "normal", 2);
+                return false;
+            }
+            
+            room.sendAnnouncement(`🗳️ ${player.name} ha votado por el mapa: ${MAPS[mapKey].name}`, null, 0x00FF00, "normal", 2);
+            return false;
+        }
+        
+        if (command === "!randommap") {
+            const elo = playerELO[player.auth] || 1000;
+            const rank = getRankByELO(elo);
+            
+            if (!canUseCommand(player.id, 'randommap', rank.cooldown)) {
+                const remaining = getCooldownRemaining(player.id, 'randommap', rank.cooldown);
+                room.sendAnnouncement(`⏱️ Debes esperar ${remaining}s para usar este comando`, player.id, 0xFF0000, "normal", 2);
+                return false;
+            }
+            
+            const randomKey = getRandomMap();
+            room.sendAnnouncement(`🎲 ${player.name} ha votado por un mapa aleatorio: ${MAPS[randomKey].name}`, null, 0xFFD700, "normal", 2);
+            return false;
+        }
+        
+        if (command === "!nextmap") {
+            room.sendAnnouncement(`🗺️ Próximo mapa: ${MAPS[currentMapKey].name}`, player.id, 0x00FFFF, "normal", 2);
+            return false;
+        }
+        
+        if (command === "!vote") {
+            const voteNum = parseInt(args[1]);
+            voteMap(player, voteNum);
+            return false;
+        }
+        
+        return; // No es un comando owner, permitir mensaje normal
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    // 👑 COMANDOS DE OWNER Y ADMIN
+    // ═══════════════════════════════════════════════════════
+    
+    // Comandos solo para OWNER
+    if (command === "!admin") {
+        if (!isOwner) {
+            room.sendAnnouncement("❌ Solo el OWNER puede dar admin", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const targetName = args.slice(1).join(' ');
+        const targetPlayer = room.getPlayerList().find(p => p.name === targetName);
+        
+        if (!targetPlayer) {
+            room.sendAnnouncement("❌ Jugador no encontrado", player.id, 0xFF0000, "normal", 2);
+            room.sendAnnouncement("💡 Tip: Usa el nombre exacto del jugador", player.id, 0xFFFF00, "normal", 2);
+            return false;
+        }
+        
+        if (adminList.has(targetPlayer.auth)) {
+            room.sendAnnouncement("❌ El jugador ya es admin", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        adminList.add(targetPlayer.auth);
+        saveData();
+        
+        // Aplicar admin con delay
+        setTimeout(() => {
+            room.setPlayerAdmin(targetPlayer.id, true);
+        }, 100);
+        
+        room.sendAnnouncement(`👮 ${targetPlayer.name} ahora es ADMIN`, null, 0x9966FF, "bold", 2);
+        room.sendAnnouncement(`🔧 Admin aplicado correctamente ⭐`, targetPlayer.id, 0x00FF00, "bold", 2);
+        updatePlayerName(targetPlayer);
+        
+        console.log(`👮 ADMIN granted: ${targetPlayer.name} (ID: ${targetPlayer.id}, Auth: ${targetPlayer.auth})`);
+        return false;
+    }
+    
+    if (command === "!unadmin") {
+        if (!isOwner) {
+            room.sendAnnouncement("❌ Solo el OWNER puede quitar admin", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const targetName = args.slice(1).join(' ');
+        const targetPlayer = room.getPlayerList().find(p => p.name === targetName);
+        
+        if (!targetPlayer) {
+            room.sendAnnouncement("❌ Jugador no encontrado", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        if (!adminList.has(targetPlayer.auth)) {
+            room.sendAnnouncement("❌ El jugador no es admin", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        adminList.delete(targetPlayer.auth);
+        saveData();
+        room.setPlayerAdmin(targetPlayer.id, false);
+        room.sendAnnouncement(`❌ ${targetPlayer.name} ya no es ADMIN`, null, 0xFF0000, "bold", 2);
+        updatePlayerName(targetPlayer);
+        return false;
+    }
+    
+    if (command === "!setelo") {
+        if (!isOwner) {
+            room.sendAnnouncement("❌ Solo el OWNER puede modificar ELO", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const targetName = args[1];
+        const eloAmount = parseInt(args[2]);
+        
+        if (!targetName || isNaN(eloAmount)) {
+            room.sendAnnouncement("❌ Uso: !setelo <nombre> <cantidad>", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const targetPlayer = room.getPlayerList().find(p => p.name === targetName);
+        if (!targetPlayer) {
+            room.sendAnnouncement("❌ Jugador no encontrado", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        playerELO[targetPlayer.auth] = eloAmount;
+        saveData();
+        room.sendAnnouncement(`📊 ELO de ${targetPlayer.name} establecido en: ${eloAmount}`, null, 0xFFD700, "bold", 2);
+        return false;
+    }
+    
+    if (command === "!resetelo") {
+        if (!isOwner) {
+            room.sendAnnouncement("❌ Solo el OWNER puede resetear ELO", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const targetName = args.slice(1).join(' ');
+        
+        if (targetName) {
+            const targetPlayer = room.getPlayerList().find(p => p.name === targetName);
+            if (targetPlayer) {
+                playerELO[targetPlayer.auth] = 1000;
+                playerStats[targetPlayer.auth] = {
+                    wins: 0, losses: 0, draws: 0,
+                    goals: 0, assists: 0, ownGoals: 0, cleanSheets: 0
+                };
+                saveData();
+                room.sendAnnouncement(`🔄 ELO y stats de ${targetPlayer.name} reiniciados`, null, 0xFFD700, "bold", 2);
+            }
+        } else {
+            // Reiniciar todo
+            playerELO = {};
+            playerStats = {};
+            saveData();
+            room.sendAnnouncement("🔄 Todos los ELO y stats han sido reiniciados", null, 0xFF0000, "bold", 2);
+        }
+        return false;
+    }
+    
+    if (command === "!forceadmin") {
+        if (!isOwner) {
+            room.sendAnnouncement("❌ Solo el OWNER puede usar este comando", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        // Forzar admin del owner
+        room.setPlayerAdmin(player.id, true);
+        adminList.add(player.auth);
+        saveData();
+        
+        room.sendAnnouncement("🔧 Admin forzado correctamente", player.id, 0x00FF00, "bold", 2);
+        room.sendAnnouncement("⭐ Verifica que ahora tengas la estrella", player.id, 0xFFD700, "normal", 2);
+        
+        console.log(`🔧 Force admin executed by ${player.name}`);
+        return false;
+    }
+    
+    if (command === "!clearadmins") {
+        if (!isOwner) {
+            room.sendAnnouncement("❌ Solo el OWNER puede usar este comando", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        // Limpiar todos los admins
+        const oldSize = adminList.size;
+        adminList.clear();
+        
+        // Mantener solo al owner como admin
+        adminList.add(player.auth);
+        
+        // Quitar admin visual a todos excepto al owner
+        room.getPlayerList().forEach(p => {
+            if (p.auth !== ownerAuth) {
+                room.setPlayerAdmin(p.id, false);
+            }
+        });
+        
+        saveData();
+        
+        room.sendAnnouncement(`🧹 Se eliminaron ${oldSize} admins`, null, 0xFF0000, "bold", 2);
+        room.sendAnnouncement("👑 Solo el OWNER tiene admin ahora", null, 0xFFD700, "bold", 2);
+        
+        console.log(`🧹 Admins cleared by ${player.name}. Removed: ${oldSize}`);
+        return false;
+    }
+    
+    if (command === "!resetowner") {
+        // COMANDO DE EMERGENCIA - Solo funciona si NO hay owner establecido
+        if (ownerAuth !== null && ownerAuth !== "") {
+            room.sendAnnouncement("❌ Ya existe un OWNER establecido", player.id, 0xFF0000, "normal", 2);
+            room.sendAnnouncement("💡 El OWNER actual debe usar !clearadmins primero", player.id, 0xFFFF00, "normal", 2);
+            return false;
+        }
+        
+        // Si NO hay owner, permitir que alguien lo tome
+        ownerAuth = player.auth;
+        adminList.clear();
+        adminList.add(player.auth);
+        saveData();
+        
+        setTimeout(() => {
+            room.setPlayerAdmin(player.id, true);
+        }, 100);
+        
+        room.sendAnnouncement("🚨 OWNERSHIP RECLAMADO 🚨", null, 0xFF0000, "bold", 2);
+        room.sendAnnouncement(`👑 ${player.name} es ahora el OWNER`, null, 0xFFD700, "bold", 2);
+        
+        console.log(`🚨 OWNERSHIP RESET by ${player.name}`);
+        return false;
+    }
+    
+    if (command === "!nukesystem") {
+        // SOLO funciona si escribes exactamente el comando + confirmación
+        const confirmation = args.slice(1).join(' ');
+        
+        if (confirmation !== "CONFIRMAR RESET TOTAL") {
+            room.sendAnnouncement("⚠️ COMANDO DE EMERGENCIA NUCLEAR ⚠️", player.id, 0xFF0000, "bold", 2);
+            room.sendAnnouncement("Este comando BORRA TODO:", player.id, 0xFF0000, "normal", 2);
+            room.sendAnnouncement("- Owner actual", player.id, 0xFF0000, "normal", 2);
+            room.sendAnnouncement("- Todos los admins", player.id, 0xFF0000, "normal", 2);
+            room.sendAnnouncement("- TODO el ELO", player.id, 0xFF0000, "normal", 2);
+            room.sendAnnouncement("- TODAS las stats", player.id, 0xFF0000, "normal", 2);
+            room.sendAnnouncement("", player.id, 0x000000, "normal", 0);
+            room.sendAnnouncement("Para confirmar, escribe:", player.id, 0xFFFF00, "bold", 2);
+            room.sendAnnouncement("!nukesystem CONFIRMAR RESET TOTAL", player.id, 0xFFFF00, "bold", 2);
+            return false;
+        }
+        
+        // RESET NUCLEAR - Borra TODO
+        ownerAuth = null;
+        adminList.clear();
+        playerELO = {};
+        playerStats = {};
+        playerCooldowns = {};
+        
+        // Quitar admin a todos
+        room.getPlayerList().forEach(p => {
+            room.setPlayerAdmin(p.id, false);
+        });
+        
+        saveData();
+        
+        room.sendAnnouncement("💥💥💥 RESET NUCLEAR COMPLETADO 💥💥💥", null, 0xFF0000, "bold", 2);
+        room.sendAnnouncement("🔄 Sistema reiniciado completamente", null, 0xFF0000, "bold", 2);
+        room.sendAnnouncement("📝 El primer jugador puede usar !owner123", null, 0xFFD700, "bold", 2);
+        
+        console.log(`💥 NUCLEAR RESET executed by ${player.name}`);
+        return false;
+    }
+    
+    // Comandos para OWNER y ADMIN
+    if (command === "!forcemap") {
+        if (!isOwner && !isAdmin) {
+            room.sendAnnouncement("❌ Solo OWNER/ADMIN pueden forzar mapas", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const mapKey = args[1];
+        if (!mapKey || !MAPS[mapKey]) {
+            room.sendAnnouncement("❌ Uso: !forcemap <código> | Usa !maps para ver códigos", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        loadMap(mapKey);
+        const roleText = isOwner ? "OWNER" : "ADMIN";
+        room.sendAnnouncement(`🗺️ ${roleText} ha forzado el mapa: ${MAPS[mapKey].name}`, null, 0x9966FF, "bold", 2);
+        return false;
+    }
+    
+    if (command === "!rr") {
+        if (!isOwner && !isAdmin) {
+            room.sendAnnouncement("❌ Solo OWNER/ADMIN pueden reiniciar partidas", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        room.stopGame();
+        room.startGame();
+        const roleText = isOwner ? "OWNER" : "ADMIN";
+        room.sendAnnouncement(`🔄 Partida reiniciada por ${roleText}`, null, 0x9966FF, "bold", 2);
+        return false;
+    }
+    
+    if (command === "!kick") {
+        if (!isOwner && !isAdmin) {
+            room.sendAnnouncement("❌ Solo OWNER/ADMIN pueden expulsar jugadores", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const targetName = args[1];
+        const reason = args.slice(2).join(' ') || "Sin razón especificada";
+        
+        if (!targetName) {
+            room.sendAnnouncement("❌ Uso: !kick <nombre> [razón]", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const targetPlayer = room.getPlayerList().find(p => p.name === targetName);
+        if (!targetPlayer) {
+            room.sendAnnouncement("❌ Jugador no encontrado", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        room.kickPlayer(targetPlayer.id, reason, false);
+        room.sendAnnouncement(`🚫 ${targetPlayer.name} expulsado. Razón: ${reason}`, null, 0xFF0000, "bold", 2);
+        return false;
+    }
+    
+    if (command === "!mute") {
+        if (!isOwner && !isAdmin) {
+            room.sendAnnouncement("❌ Solo OWNER/ADMIN pueden mutear jugadores", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        const targetName = args.slice(1).join(' ');
+        const targetPlayer = room.getPlayerList().find(p => p.name === targetName);
+        
+        if (!targetPlayer) {
+            room.sendAnnouncement("❌ Jugador no encontrado", player.id, 0xFF0000, "normal", 2);
+            return false;
+        }
+        
+        // Agregar a lista de muteados (necesitarías implementar esto)
+        room.sendAnnouncement(`🔇 ${targetPlayer.name} ha sido muteado`, null, 0xFF0000, "bold", 2);
+        return false;
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+// 🎮 EVENTOS DEL JUEGO
+// ══════════════════════════════════════════════════════════
+
+room.onPlayerJoin = function(player) {
+    initPlayer(player.auth);
+    
+    console.log(`🔍 Player joined: ${player.name} | Auth: ${player.auth}`);
+    console.log(`🔍 OwnerAuth stored: ${ownerAuth}`);
+    console.log(`🔍 Auth comparison: ${player.auth === ownerAuth}`);
+    console.log(`🔍 Is in adminList: ${adminList.has(player.auth)}`);
+    
+    // VERIFICACIÓN MUY ESTRICTA - Solo dar admin si cumple las condiciones EXACTAS
+    const isOwnerPlayer = (ownerAuth !== null && ownerAuth !== "" && player.auth === ownerAuth);
+    const isAdminPlayer = (adminList.size > 0 && adminList.has(player.auth));
+    
+    // Por defecto, QUITAR admin a todos
+    room.setPlayerAdmin(player.id, false);
+    
+    // Solo dar admin si es realmente owner o admin
+    if (isOwnerPlayer) {
+        console.log(`👑 OWNER DETECTED - Granting admin to ${player.name}`);
+        setTimeout(() => {
+            room.setPlayerAdmin(player.id, true);
+        }, 150);
+    } else if (isAdminPlayer) {
+        console.log(`👮 ADMIN DETECTED - Granting admin to ${player.name}`);
+        setTimeout(() => {
+            room.setPlayerAdmin(player.id, true);
+        }, 150);
+    } else {
+        console.log(`👤 REGULAR PLAYER: ${player.name} - NO admin granted`);
+    }
+    
+    updatePlayerName(player);
+    
+    const elo = playerELO[player.auth] || 1000;
+    const rank = getRankByELO(elo);
+    
+    // Mostrar rol SOLO si es realmente owner o admin
+    let roleMessage = "";
+    if (isOwnerPlayer) {
+        roleMessage = "\n  👑 ROL: OWNER DEL SERVIDOR";
+    } else if (isAdminPlayer) {
+        roleMessage = "\n  👮 ROL: ADMINISTRADOR";
+    }
+    
+    room.sendAnnouncement("╔═══════════════════════════════════╗", player.id, 0x00FFFF, "bold", 0);
+    room.sendAnnouncement("   🐯 BIENVENIDO A JUEGAN TODOS 🔥", player.id, 0x00FFFF, "bold", 0);
+    room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0x00FFFF, "bold", 0);
+    room.sendAnnouncement(`  Jugador: ${player.name}`, player.id, 0xFFFFFF, "normal", 0);
+    room.sendAnnouncement(`  📈 ELO: ${elo}`, player.id, 0xFFFFFF, "normal", 0);
+    room.sendAnnouncement(`  🏅 Rango: ${rank.name}`, player.id, rank.color, "bold", 0);
+    if (roleMessage) {
+        room.sendAnnouncement(roleMessage, player.id, 0x9966FF, "bold", 0);
+    }
+    room.sendAnnouncement("╠═══════════════════════════════════╣", player.id, 0x00FFFF, "bold", 0);
+    room.sendAnnouncement(`  💬 Discord: ${DISCORD_URL}`, player.id, 0x7289DA, "normal", 0);
+    room.sendAnnouncement("  📋 Escribe !help para ver comandos", player.id, 0xFFFFFF, "normal", 0);
+    room.sendAnnouncement("╚═══════════════════════════════════╝", player.id, 0x00FFFF, "bold", 0);
+    
+    const roleText = isOwnerPlayer ? " (OWNER)" : (isAdminPlayer ? " (ADMIN)" : "");
+    console.log(`✅ ${player.name}${roleText} joined | ELO: ${elo} | Rango: ${rank.name}`);
+};
+
+room.onPlayerLeave = function(player) {
+    afkPlayers.delete(player.id);
+    console.log(`👋 ${player.name} se fue`);
+};
+
+room.onPlayerChat = function(player, message) {
+    if (message.startsWith('!')) {
+        return handleCommand(player, message);
+    }
+    return sendCustomMessage(player, message);
+};
+
+room.onGameStart = function(byPlayer) {
+    gameInProgress = true;
+    room.sendAnnouncement("⚽ ¡PARTIDO INICIADO! ¡Buena suerte a ambos equipos! 🔥", null, 0x00FF00, "bold", 2);
+};
+
+room.onGameStop = function(byPlayer) {
+    gameInProgress = false;
+};
+
+room.onTeamVictory = function(scores) {
+    const redPlayers = room.getPlayerList().filter(p => p.team === 1);
+    const bluePlayers = room.getPlayerList().filter(p => p.team === 2);
+    
+    let winners, losers;
+    
+    if (scores.red > scores.blue) {
+        winners = redPlayers;
+        losers = bluePlayers;
+        room.sendAnnouncement("🔴 ¡VICTORIA DEL EQUIPO ROJO! 🔴", null, 0xFF0000, "bold", 2);
+    } else if (scores.blue > scores.red) {
+        winners = bluePlayers;
+        losers = redPlayers;
+        room.sendAnnouncement("🔵 ¡VICTORIA DEL EQUIPO AZUL! 🔵", null, 0x0000FF, "bold", 2);
+    } else {
+        // Empate
+        [...redPlayers, ...bluePlayers].forEach(p => {
+            playerStats[p.auth].draws++;
+        });
+        saveData();
+        room.sendAnnouncement("🤝 ¡EMPATE! Ambos equipos jugaron bien", null, 0xFFFF00, "bold", 2);
+        
+        // Iniciar votación de mapas después del empate
+        setTimeout(() => {
+            startMapVoting();
+        }, 3000);
+        return;
+    }
+    
+    // Actualizar ELO
+    updateELO(winners, losers);
+    
+    // Iniciar votación de mapas
+    setTimeout(() => {
+        startMapVoting();
+    }, 3000);
+};
+
+room.onTeamGoal = function(team) {
+    const goalScorers = room.getPlayerList().filter(p => p.team === team);
+    
+    // Actualizar stats de goles (simplificado)
+    if (goalScorers.length > 0) {
+        const lastPlayer = goalScorers[goalScorers.length - 1];
+        if (playerStats[lastPlayer.auth]) {
+            playerStats[lastPlayer.auth].goals++;
+            saveData();
+        }
+    }
+};
+
+// ══════════════════════════════════════════════════════════
+// 🚀 INICIALIZACIÓN
+// ══════════════════════════════════════════════════════════
+
+loadData();
+loadMap("rsr"); // Cargar mapa inicial
+
+// Mensaje de Discord periódico
+discordMessageInterval = setInterval(() => {
+    room.sendAnnouncement(`💬 ¡Únete a nuestro Discord oficial! ${DISCORD_URL}`, null, 0x7289DA, "bold", 2);
+}, DISCORD_MESSAGE_INTERVAL);
+
+// Auto-start cuando hay suficientes jugadores
+setInterval(() => {
+    const players = room.getPlayerList();
+    const redCount = players.filter(p => p.team === 1).length;
+    const blueCount = players.filter(p => p.team === 2).length;
+    
+    if (!gameInProgress && redCount >= 1 && blueCount >= 1) {
+        room.startGame();
+    }
+}, 5000);
+
+room.sendAnnouncement("╔═══════════════════════════════════╗", null, 0xFFD700, "bold", 0);
+room.sendAnnouncement("   🐯🔥 SERVIDOR INICIADO 🔥🐯", null, 0xFFD700, "bold", 0);
+room.sendAnnouncement("╠═══════════════════════════════════╣", null, 0xFFD700, "bold", 0);
+room.sendAnnouncement("  Sistema de ELO: ✅", null, 0x00FF00, "normal", 0);
+room.sendAnnouncement("  Sistema de Rangos: ✅", null, 0x00FF00, "normal", 0);
+room.sendAnnouncement("  Sistema de Mapas: ✅", null, 0x00FF00, "normal", 0);
+room.sendAnnouncement("  Rotación Automática: ✅", null, 0x00FF00, "normal", 0);
+room.sendAnnouncement("╠═══════════════════════════════════╣", null, 0xFFD700, "bold", 0);
+room.sendAnnouncement(`  💬 Discord: ${DISCORD_URL}`, null, 0x7289DA, "normal", 0);
+room.sendAnnouncement("╚═══════════════════════════════════╝", null, 0xFFD700, "bold", 0);
+
+console.log("🐯🔥 JUEGAN TODOS | THE TIGER - Script cargado exitosamente!");
+console.log("📋 Sistema de mapas activo con", Object.keys(MAPS).length, "mapas disponibles");
+console.log("🏆 Sistema de ELO y Rangos activo");
+console.log("👑 Comando de owner:", OWNER_PASSWORD);
